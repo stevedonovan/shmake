@@ -1,0 +1,13 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+SRC='../..'
+R copy-files -O $PWD ditto 'cp @(INPUT) @(TARGET)' $SRC/*.c $SRC/*.h
+
+S includes $SRC
+S lib-dirs $SRC/llib
+S libs llib
+
+C99 shmake shmake.c lib.c utils.c
+all copy-files shmake
+

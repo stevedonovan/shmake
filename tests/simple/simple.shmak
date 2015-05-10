@@ -1,0 +1,10 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+COMPILE='gcc -c @(INPUT) -o @(TARGET)'
+LINK='gcc @(DEPS) -o @(TARGET)'
+
+T hello.o hello.c common.h "$COMPILE"
+T common.o common.c "$COMPILE"
+T hello hello.o common.o "$LINK"
+all hello

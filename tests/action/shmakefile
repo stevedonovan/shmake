@@ -1,0 +1,11 @@
+#!/bin/bash
+. /tmp/shmake.sh
+
+T frodo 'echo frodo'
+T bilbo 'echo bilbo'
+T Linux 'echo likes penguins'
+T Darwin 'echo likes apples'
+
+all frodo bilbo $(uname)
+
+

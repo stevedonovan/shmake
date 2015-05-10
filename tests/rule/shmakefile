@@ -1,0 +1,5 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+C progs -R exe *.c
+all progs

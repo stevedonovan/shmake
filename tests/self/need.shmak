@@ -1,0 +1,5 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+C shmake -n llib shmake.c lib.c utils.c
+
