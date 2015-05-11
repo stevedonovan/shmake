@@ -49,6 +49,14 @@ typedef struct Need_ {
     str_t lflags;
 } Need;
 
+str_t lookup_and_subst(char **cfg, str_t key) {
+    char *res = str_lookup(cfg,key);
+    StrTempl *st = str_templ_new(res,"${}");
+    res = str_templ_subst(st, cfg);
+    unref(st);
+    return res;
+}
+
 // first, see if NEED.need exists in current dir or in ~/.shmake
 // If so, then it is a property-style file that needs at least one of
 // 'cflags' or 'libs' defined.
@@ -64,8 +72,8 @@ Need *need_from_name(str_t name) {
         char **cfg = config_read(nfile);
         if (! cfg)
             return NULL;
-        N->cflags = str_lookup(cfg,"cflags");
-        N->lflags = str_lookup(cfg,"libs");
+        N->cflags = lookup_and_subst(cfg,"cflags");
+        N->lflags = lookup_and_subst(cfg,"libs");
         return N;
     }
     N->cflags = file_command_fmt("pkg-config --cflags %s",name);
@@ -73,6 +81,23 @@ Need *need_from_name(str_t name) {
     if (! (*N->cflags || *N->lflags))
         return NULL;
     return N;
+}
+
+void need_update(str_t *need_list, str_t *cflags, str_t *lflags) {
+    char **cs = strbuf_new();
+    char **ls = strbuf_new();        
+    strbuf_addsp(cs,*cflags);
+    strbuf_addsp(ls,*lflags);
+    FOR (i, array_len(need_list)) {
+        Need *N = need_from_name(need_list[i]);
+        if (! N) {
+            quit("unable to resolve need '%s'",need_list[i]);
+        }
+        strbuf_addsp(cs,N->cflags);
+        strbuf_addsp(ls,N->lflags);
+    }
+    *cflags = strbuf_tostring(cs);
+    *lflags = strbuf_tostring(ls);
 }
 
 /// parsing arguments passed to C[pp]
@@ -215,25 +240,12 @@ void set_defaults(str_t name, str_t value) {
 // collect all the needs and call need_from_name on them, adding
 // extra compile and link flags.
 void update_needs() {
-    if (s_def.needs) {
+    if (s_def.needs) { // any default needs?
         cat (&s_args.needs, s_def.needs);
     }
     str_t *need_list = split(s_args.needs);
     if (need_list) {
-        char **cs = strbuf_new();
-        char **ls = strbuf_new();        
-        strbuf_addsp(cs,s_args.cflags);
-        strbuf_addsp(ls,s_args.lflags);
-        FOR (i, array_len(need_list)) {            
-            Need *N = need_from_name(need_list[i]);
-            if (! N) {
-                quit("unable to resolve need '%s'",need_list[i]);
-            }
-            strbuf_addsp(cs,N->cflags);
-            strbuf_addsp(ls,N->lflags);
-        }
-        s_args.cflags = strbuf_tostring(cs);
-        s_args.lflags = strbuf_tostring(ls);
+        need_update(need_list, &s_args.cflags, &s_args.lflags);
     }
 }
 

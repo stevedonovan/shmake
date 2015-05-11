@@ -116,19 +116,27 @@ If you had a number of projects depending on llib or some other external depende
 ```Shell
 self$ cat ~/.shmake/llib.need 
 # simple file providing a Need
-cflags=-std=c99 -I/home/user/dev/c/llib
+cflags=-I/home/user/dev/c/llib
 libs=-L/home/user/dev/c/llib/llib -lllib
 
 self$ cat need.shmak
 #!/bin/sh
 . /tmp/shmake.sh
-C shmake -n llib shmake.c lib.c utils.c
+C99 shmake -n llib shmake.c lib.c utils.c
 
 self$ shmake -v -f need.shmak
 gcc -c -Wall -MMD  -std=c99 -I/home/user/dev/c/llib  -O2 shmake.c -o shmake.o
 gcc -c -Wall -MMD  -std=c99 -I/home/user/dev/c/llib  -O2 lib.c -o lib.o
 gcc -c -Wall -MMD  -std=c99 -I/home/user/dev/c/llib  -O2 utils.c -o utils.o
 gcc shmake.o lib.o utils.o  -L/home/user/dev/c/llib/llib -lllib  -Wl,-s -o shmake
+```
+
+Like `pkg-config`, it is possible to have variable expansions:
+
+```Shell
+prefix=/home/steve/c/llib
+cflags=-I${prefix}
+libs=-L${prefix}/llib -lllib
 ```
 
 If there's no such file, we ask `pkg-config`.
