@@ -2,13 +2,13 @@
 
 shmake is a build tool which is driven by POSIX shell scripts, specialized around 
 gcc and compilers which behave like it.  It deliverately lacks ambition to be an universal 
-build tool like [lake](?), but aims to make the simple stuff easy and the complicated 
+build tool like [lake](https://github.com/stevedonovan/Lake), but aims to make the simple stuff easy and the complicated 
 stuff easier.
 
 For instance, say we have a little project with two source files, 'hello.c' and 'common.c',
 with 'hello.c' including 'common.c'.   This would be the _shmakefile_.
 
-```
+```Shell
 #!/bin/sh
 . /tmp/shmake.sh
 
@@ -20,7 +20,7 @@ Shmakefiles are executable shell scripts - the second line sources any special m
 which shmake needs to provide.  But they are not executed directly.  When shmake
 is run, it will look for a shmakefile, in time-honoured fashion.
 
-```
+```Shell
 simple$ shmake
 compiling common.o
 compiling hello.o
@@ -42,7 +42,7 @@ It does this by using GCC's -MMD flag and reading the resulting .d files, saving
 
 By default it gives you an optimized stripped executable, and does not show you the actual compilation.  The '-g' flag will give you a debug build, and '-v' will make shmake more verbose and chattery:
 
-```
+```Shell
 simple$ shmake clean
 simple$ shmake -g -v
 gcc -c -Wall -MMD -g common.c -o common.o
@@ -58,7 +58,7 @@ gcc common.o hello.o -Wl,-s -o hello
 
 Just to make things a little easier, to create a shmakefile initially, use the '-c' option
 
-```
+```Shell
 simple$ shmake -c 'C hello *.c'
 shmakefile created
 ```
@@ -67,7 +67,7 @@ shmakefile created
 
 This is all very cute, but can it do real projects?  Here is a shmakefile for shmake, in the 'tests/self' directory. First the simplified version, assuming that the source has been copied up:
 
-```
+```Shell
 #!/bin/sh
 . /tmp/shmake.sh
 
@@ -80,7 +80,7 @@ It is not a complicated project (only about 1200 lines in total) but leans heavi
 
 This is entirely equivalent, except using the S ('set') command for specifying _default flags_.  It's clearer for more complicated projects, pdlus it applies to _any_ program target unless they explicitly override the defaults.
 
-```
+```Shell
 #!/bin/sh
 . /tmp/shmake.sh
 
@@ -113,7 +113,7 @@ All of these except the last three are additive, so that setting a variable mult
 
 If you had a number of projects depending on llib or some other external dependency, then _needs_ are a useful concept.  A borrowing from Lake, needs are a general way of looking up the compile and link flags.  A need can be defined by a file with the extension.need, either in current dir or in ~/.shmake
 
-```
+```Shell
 self$ cat ~/.shmake/llib.need 
 # simple file providing a Need
 cflags=-std=c99 -I/home/user/dev/c/llib
@@ -139,7 +139,7 @@ Underneath, shmake is very much like make, and allows the same style of dependen
 
 For the simple example, we could perform the build explicitly:
 
-```
+```Shell
 #!/bin/sh
 . /tmp/shmake.sh
 
@@ -167,11 +167,11 @@ shmake provides three predefined variables to shmakefiles: CC (the C compiler), 
 
 The non-flag arguments are either VAR=VALUE assignments or targets.  So 'shmake PLAT=darwin' will override the default value of PLAT.  Currently only one explicit target is supported, the default is 'all'.  There is a predefined target 'clean' which removes all targets representing files.
 
-## Example; Building Lua
+## Example: Building Lua
 
 For a complete programming language, Lua is relatively easy to build. But the makefile is a bit convolved and obscures what's going on.  This shmakefile makes things a lot clearer.
 
-```
+```Shell
 #!/bin/sh
 . /tmp/shmake.sh
 
