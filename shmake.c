@@ -514,6 +514,10 @@ int run_shmakefile(str_t specific_target) {
         } else 
         if (str_eq(cmd,"quit")) {
             str_t msg = args[0];
+            if (str_eq(msg,"exists")) {
+                if (! getenv(args[1]))
+                    quit("quit '%s' does not exit",args[1]);
+            } else
             if (args[1] == NULL) 
                 quit("quit %s",msg);
         }

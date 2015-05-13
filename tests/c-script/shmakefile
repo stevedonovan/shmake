@@ -1,0 +1,36 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+# simple C script!
+if test -z "$P" ; then
+    echo "shmake P=<script basename>"
+    exit 1
+fi
+
+S quiet true
+
+cfile=$P.c
+sfile=$P.s
+
+T  $cfile $sfile "
+cat >@(TARGET) <<block
+#include <stdio.h>
+#include <stdlib.h>
+#include <llib/all.h>
+#include <llib/template.h>
+
+int main(int argc, char **argv)
+{
+#line 1 \"@(INPUT)\"
+block
+cat @(INPUT) >> @(TARGET)
+cat >>@(TARGET) <<block
+    return 0;
+}
+block
+"
+
+C99 -g $P $cfile -n llib
+
+T all $P "./$P $A"
+
