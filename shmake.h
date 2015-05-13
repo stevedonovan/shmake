@@ -2,7 +2,7 @@
 #define __SHMAKE_H
 #include <llib/str.h>
 
-void shmake_flags(int v_level, bool test);
+void shmake_flags(int v_level, bool test, bool silent);
 
 typedef struct File_ {
     str_t name;

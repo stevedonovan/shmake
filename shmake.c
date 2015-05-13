@@ -28,6 +28,7 @@
 
 static ArgState *arg_state;
 static bool testing;
+static  int verbose_level;
 
 #define quit(msg,...) arg_quit(arg_state,str_fmt(msg,__VA_ARGS__),false)
 
@@ -127,6 +128,7 @@ static str_t do_create;
 static bool *verbose;
 static bool macosx;
 static bool debug;
+static bool quiet;
 
 void * main_args[] = {
     "// shmake: a simple shell-based make tool",
@@ -135,6 +137,7 @@ void * main_args[] = {
     "bool testing; // -t testing mode - show commands but don't execute them",&testing,
     "bool debug; // -g build debug binaries",&debug,
     "bool verbose[]; // -v verbose output",&verbose,
+    "bool quiet; // -q no output unless error",&quiet,
     "string create=''; // -c create shmakefile from statement",&do_create,
     "string #1[]; // target and VAR=VALUE assignments",&shmake_args,
     NULL
@@ -232,6 +235,9 @@ void set_defaults(str_t name, str_t value) {
     } else
     if (str_eq(name,"exports")) {
         s_def.exports = str_eq_any(value,"true","1");
+    } else
+    if (str_eq(name,"quiet")) {
+        quiet = str_eq_any(value,"true","1");
     } else {
         quit("unknown default variable name %s",name);
     }
@@ -509,13 +515,14 @@ int run_shmakefile(str_t specific_target) {
         if (str_eq(cmd,"quit")) {
             str_t msg = args[0];
             if (args[1] == NULL) 
-                quit("quit %s",msg);            
+                quit("quit %s",msg);
         }
         unref(args);
     }
     if (array_len(targets()) == 0) {
         quit("no targets defined","");
     }
+    shmake_flags(verbose_level,testing,quiet);    
     // notice the special case; 'all' matches the first target, if not explicitly
     // present.   target_push_to_front() ensures that program/lib targets end here.
     str_t target_name = specific_target ? specific_target : "all";
@@ -559,14 +566,14 @@ int main(int argc, const char **argv)
     
     // verbose is an array of bools.
     // can say -v for level 1 and -vv for level 2
-    int verbose_level = 0;
+    verbose_level = 0;
     if (verbose[0]) {
         ++verbose_level;
         if (verbose[1]) {
             ++verbose_level;
         }
     }
-    shmake_flags(verbose_level,testing);
+
     str_t shmake_target = NULL;
     for (str_t *a = shmake_args; *a; a++) {
         char *p = strchr(*a,'=');

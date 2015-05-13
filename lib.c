@@ -15,12 +15,14 @@
 
 static int verbose_level;
 static bool testing;
+static bool quiet;
 static int s_group_type;
 static int s_file_type;
 
-void shmake_flags(int v_level, bool test) {
+void shmake_flags(int v_level, bool test, bool silent) {
     verbose_level = v_level;
     testing = test;
+    quiet = silent;
 }
 
 // File is a type representing a file
@@ -211,7 +213,7 @@ void target_fire(Target *T) {
         if (verbose_level > 0) {
             printf("%s\n",xcmd);
         } else // but compile/link targets have a message...
-        if (T->message) { 
+        if (T->message && ! quiet) { 
             printf("%s %s\n",T->message,T->name);
         }
         // -t for testing is useful if you just want to see what will happen with a build.
