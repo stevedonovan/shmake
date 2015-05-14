@@ -247,4 +247,4 @@ all lua luac
 ```
 Note the very useful '-x' (for 'exclude') flag that avoids the need to write out all those C files!  Apart from being clearer, this immediately can give a debug build with the global '-g' flag.
 
-If nothing else, shmake is a demonstration of a useful tactic: using shell script as your program's domain specific language (DSL).
+If nothing else, shmake is a demonstration of a useful tactic: using shell script as your program's domain specific language (DSL).  In this way, a deeper knowledge of shell translates directly into a more powerful way to build projects.

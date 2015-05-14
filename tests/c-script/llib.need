@@ -1,0 +1,3 @@
+prefix=../..
+cflags=-I${prefix}
+libs=-L${prefix}/llib -lllib
