@@ -5,7 +5,7 @@
 
 // make a full path, creating dir if needed
 str_t join(str_t odir, str_t tname) {
-    if (odir && *odir) {
+    if (odir && *odir && ! (tname[0] == '.'  || tname[0] == '/')) {
         if (*odir == '/') { // absolute
             tname = file_basename(tname);
         }
@@ -26,7 +26,7 @@ str_t join(str_t odir, str_t tname) {
         } else {
             *s = extra;
         }
-    }
+    } 
 }
 
 // given an array ["A","B",...] and a prefix flag like -F,
@@ -72,3 +72,6 @@ bool str_eq2(str_t s1, str_t s2) {
     return res;
 }
 
+bool str2bool (str_t value) {
+    return str_eq_any(value,"true","1") > 0;
+}

@@ -361,8 +361,8 @@ Group *compile_step (str_t compiler, str_t *files, str_t cflags, str_t *incdirs,
     Target **targets = array_new_ref(Target*,array_len(files));
     FOR(i,array_len(files)) {
         str_t file = files[i];
-        str_t dfile = file_replace_extension(file,".d");
         str_t obj = file_replace_extension(join(odir,file),".o");
+        str_t dfile = file_replace_extension(obj,".d");
         str_t *reqs = prereq_from_dfile(dfile);
         if (! reqs) {
             reqs  = VAS(file);

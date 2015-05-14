@@ -2,7 +2,7 @@
 . /tmp/shmake.sh
 
 SRC='../..'
-R copy-files -O $PWD ditto 'cp @(INPUT) @(TARGET)' $SRC/*.c $SRC/*.h
+R copy-files -d $PWD ditto 'cp @(INPUT) @(TARGET)' $SRC/*.c $SRC/*.h
 
 S includes $SRC
 S lib-dirs $SRC/llib

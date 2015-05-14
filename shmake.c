@@ -29,6 +29,8 @@
 static ArgState *arg_state;
 static bool testing;
 static  int verbose_level;
+static str_t private_need_path;
+
 
 #define quit(msg,...) arg_quit(arg_state,str_fmt(msg,__VA_ARGS__),false)
 
@@ -52,6 +54,8 @@ typedef struct Need_ {
 
 str_t lookup_and_subst(char **cfg, str_t key) {
     char *res = str_lookup(cfg,key);
+    if (! res)
+        return NULL;
     StrTempl *st = str_templ_new(res,"${}");
     res = str_templ_subst(st, cfg);
     unref(st);
@@ -66,15 +70,43 @@ Need *need_from_name(str_t name) {
     Need *N = obj_new(Need,NULL);
     N->name = str_ref(name);
     str_t  nfile = str_fmt("%s.need",name);
+    if (! file_exists(nfile,"r") && private_need_path) {
+        nfile = str_fmt("%s/%s.need",private_need_path,name);
+    }
     if (! file_exists(nfile,"r")) {
-        nfile = str_fmt("%s/.shmake/%s",getenv("HOME"),nfile);
+        nfile = str_fmt("%s/.shmake/%s.need",getenv("HOME"),name);
     }
     if (file_exists(nfile,"r")) {
         char **cfg = config_read(nfile);
         if (! cfg)
             return NULL;
-        N->cflags = lookup_and_subst(cfg,"cflags");
-        N->lflags = lookup_and_subst(cfg,"libs");
+        
+        // add special HERE variable (more verbose than this should be!)
+        str_t here = file_dirname(nfile);
+        char path[256];
+        if (getcwd(path,sizeof(path)) == NULL) {
+            quit("can't get current directory; %s",strerror(errno));
+        }
+        here = str_fmt("%s/%s",path,here);
+        str_t** ss = seq_new(str_t);
+        seq_adda(ss,cfg,-1);
+        seq_add(ss,"HERE");
+        seq_add(ss,here);
+        cfg = seq_array_ref(ss);
+        
+        // perform all needed ${} expansions
+        for (char** P = cfg; *P; P+= 2) {
+            char *value = *(P+1);
+            if (str_findstr(value,"${") != -1) {
+                StrTempl *st = str_templ_new(value,"${}");
+                value = str_templ_subst(st, cfg);
+                unref(st);
+                *(P+1) = value;
+            }
+        }
+        
+        N->cflags = str_lookup(cfg,"cflags");
+        N->lflags = str_lookup(cfg,"libs");
         return N;
     }
     N->cflags = file_command_fmt("pkg-config --cflags %s",name);
@@ -155,7 +187,7 @@ void * compiler_args[] = {
     "string opt='2'; // -O optimize level",&s_args.opt,
     "string exclude=''; // -x exclude files from list",&s_args.exclude,
     "string rule=''; // -R specify out extension for rule",&s_args.out_extension,
-    "string output=''; // -O output directory",&s_args.output_directory,
+    "string output=''; // -d output directory",&s_args.output_directory,
     "string #1=''; // name of program",&s_args.name,
     "string #2[]; // source files",&s_args.files,
     NULL
@@ -173,7 +205,7 @@ struct RuleArgs {
 static struct RuleArgs s_rule_args;
 
 void * rule_args[] = {
-   "string output=''; // -O output directory",&s_rule_args.output_directory,
+   "string output=''; // -d output directory",&s_rule_args.output_directory,
    "string #1; // name of rule",&s_rule_args.name,
    "string #2; // output extension",&s_rule_args.out_extension,
    "string #3; // command",&s_rule_args.command, 
@@ -231,13 +263,16 @@ void set_defaults(str_t name, str_t value) {
         s_def.opt = value;
     } else
     if (str_eq(name,"debug")) {
-        s_def.debug = str_eq_any(value,"true","1");
+        s_def.debug = str2bool(value);
     } else
     if (str_eq(name,"exports")) {
-        s_def.exports = str_eq_any(value,"true","1");
+        s_def.exports = str2bool(value);
+    } else
+    if (str_eq(name,"need_path")) {
+        private_need_path = value;
     } else
     if (str_eq(name,"quiet")) {
-        quiet = str_eq_any(value,"true","1");
+        quiet = str2bool(value);
     } else {
         quit("unknown default variable name %s",name);
     }

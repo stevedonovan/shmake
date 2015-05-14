@@ -1,0 +1,3 @@
+prefix=${HERE}
+cflags=-I${prefix}
+libs=-L${prefix} -lfoo

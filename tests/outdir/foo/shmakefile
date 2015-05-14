@@ -1,0 +1,4 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+C libfoo.a foo.c

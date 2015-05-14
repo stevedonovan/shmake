@@ -1,0 +1,6 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+S need_path foo
+
+C hello.c --output release -n foo
