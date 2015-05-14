@@ -3,4 +3,4 @@
 
 S need_path foo
 
-C hello.c --output release -n foo
+C hello.c -d auto -n foo

@@ -5,7 +5,7 @@
 
 // make a full path, creating dir if needed
 str_t join(str_t odir, str_t tname) {
-    if (odir && *odir && ! (tname[0] == '.'  || tname[0] == '/')) {
+    if (odir && *odir && ! (str_eq2(tname,"./")  || tname[0] == '/')) {
         if (*odir == '/') { // absolute
             tname = file_basename(tname);
         }

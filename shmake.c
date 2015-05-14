@@ -290,7 +290,8 @@ void update_needs() {
     }
 }
 
-Group *compile_from_args(str_t compiler, str_t *files) {    
+Group *compile_from_args(str_t compiler, str_t *files) {
+    bool debug = false;
     str_t *cflags = &s_args.cflags;
     if (s_def.cflags) {
         cat (cflags,s_def.cflags);
@@ -299,6 +300,7 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     // strictly speaking, these are not mutually exclusive.
     if (s_args.debug) {
         cat (cflags,"-g");
+        debug = true;
     } else {
         cat (cflags,str_fmt("-O%s",s_args.opt));
     }
@@ -308,7 +310,11 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     
     str_t *includes_list = split(s_args.include_dirs);
     str_t *defines_list = split(s_args.defines);
-    return compile_step(compiler,files, s_args.cflags, includes_list, defines_list,s_args.output_directory);
+    str_t odir = s_args.output_directory;
+    if (str_eq(odir,"auto")) {
+        odir = str_fmt("%s-%s",compiler,debug ? "debug" : "release");
+    }
+    return compile_step(compiler,files, s_args.cflags, includes_list, defines_list,odir);
 }
 
 Target *link_from_args(str_t compiler, str_t name, File **objs, int kind) {
