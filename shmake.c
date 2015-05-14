@@ -414,8 +414,6 @@ Target  *straight_build(str_t compiler, str_t name, str_t *files) {
     return link_from_args(compiler,name,(File**)inputs,kind);
 }
 
-static str_t tmp_file = "/tmp/shmake";
-
 void setup_compiler(str_t name) {
     if (str_eq(name,"c")) {
         if (CC) return;
@@ -437,15 +435,14 @@ void setup_compiler(str_t name) {
 // which we'll consume afterwards.
 
 static str_t shmake_sh =
-"rm /tmp/shmake\n"
-"touch /tmp/shmake\n"
+"out=$1\n"
 "pipe() {\n"
 "   res=''\n"
 "   for f in \"$@\"; do\n" 
 "       f=$(echo -n \"$f\" | tr '\\n' '\\001')\n"
 "       res=\"$res:$f\"\n"
 "   done\n"
-"   echo $res >> /tmp/shmake\n"
+"   echo $res >> $out\n"
 "}\n"
 "C() { pipe C \"$@\"; }\n"
 "C99() { pipe C99 \"$@\"; }\n"
@@ -467,16 +464,18 @@ int run_shmakefile(str_t specific_target) {
     }
     ArgState *state = arg_parse_spec(compiler_args);
     ArgState *rule_state = arg_parse_spec(rule_args);
-    // NB make sure /tmp/shmake actually exists first time...
-    exec("touch /tmp/shmake");
+    str_t tmp_file = str_fmt("/tmp/shmake.%d",getpid());
     str_t *args = NULL;
-    int n = system(str_fmt("./%s",shmakefile));
+    int n = system(str_fmt("./%s %s",shmakefile,tmp_file));
     if (n != 0) {
         if (errno != 0)
             perror("shmake");
         quit("error executing '%s'",shmakefile);
     }
     FILE *in = fopen(tmp_file,"r");
+    if (! in) {
+        quit("cannot open %s",tmp_file);
+    }
     while (file_gets(in,buff,sizeof(buff))) {
         // get any linefeeds back!
         char *p, *cmd;
@@ -564,6 +563,7 @@ int run_shmakefile(str_t specific_target) {
         }
         unref(args);
     }
+    unlink(tmp_file);
     if (array_len(targets()) == 0) {
         quit("no targets defined","");
     }
