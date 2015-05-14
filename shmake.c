@@ -262,13 +262,16 @@ void set_defaults(str_t name, str_t value) {
     if (str_eq(name,"opt")) {
         s_def.opt = value;
     } else
+    if (str_eq(name,"out-dir")) {
+        s_def.output_directory = value;
+    } else
     if (str_eq(name,"debug")) {
         s_def.debug = str2bool(value);
     } else
     if (str_eq(name,"exports")) {
         s_def.exports = str2bool(value);
     } else
-    if (str_eq(name,"need_path")) {
+    if (str_eq(name,"need-path")) {
         private_need_path = value;
     } else
     if (str_eq(name,"quiet")) {
@@ -310,7 +313,14 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     
     str_t *includes_list = split(s_args.include_dirs);
     str_t *defines_list = split(s_args.defines);
+    
+    // output directory for object and deps files
     str_t odir = s_args.output_directory;
+    if (*odir == 0) {
+        odir = s_def.output_directory;
+        if (! odir)
+            odir = "";
+    }
     if (str_eq(odir,"auto")) {
         odir = str_fmt("%s-%s",compiler,debug ? "debug" : "release");
     }

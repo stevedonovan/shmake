@@ -1,6 +1,8 @@
 #!/bin/sh
 . /tmp/shmake.sh
 
-S need_path foo
+shmake -C foo
+
+S need-path foo
 
 C hello.c -d auto -n foo
