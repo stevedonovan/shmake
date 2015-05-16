@@ -113,9 +113,8 @@ Target *target_new(str_t name, str_t *prereq, const void *data, ShmakeCallback c
         s_target_type = obj_type_index(T);
         s_targets = seq_new_ref(Target*);
     }
-    if (target_from_file(name) != NULL) {
-        //quit("target %s repeated",name);
-        return NULL;
+    if (target_from_file(name) != NULL) { // a warning, perhaps?
+        return target_from_file(name);
     }
     T->name = str_ref(name);
     seq_add(s_targets,T);
@@ -193,6 +192,8 @@ Target *target(str_t name, str_t *prereq, str_t cmd) {
                 std_map[2].value = NULL;
             }
             StrTempl *st = str_templ_new(cmd,"@()");
+            if (value_is_error(st))
+                return (Target*)st;
             target_set_command(T,str_templ_subst(st, (char**)&std_map));
         } else {
             target_set_command(T,cmd);

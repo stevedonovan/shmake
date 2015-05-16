@@ -52,16 +52,6 @@ typedef struct Need_ {
     str_t lflags;
 } Need;
 
-str_t lookup_and_subst(char **cfg, str_t key) {
-    char *res = str_lookup(cfg,key);
-    if (! res)
-        return NULL;
-    StrTempl *st = str_templ_new(res,"${}");
-    res = str_templ_subst(st, cfg);
-    unref(st);
-    return res;
-}
-
 // first, see if NEED.need exists in current dir or in ~/.shmake
 // If so, then it is a property-style file that needs at least one of
 // 'cflags' or 'libs' defined.
@@ -99,6 +89,8 @@ Need *need_from_name(str_t name) {
             char *value = *(P+1);
             if (str_findstr(value,"${") != -1) {
                 StrTempl *st = str_templ_new(value,"${}");
+                if (value_is_error(st))
+                    quit("expansion error %s",value_as_string(st));
                 value = str_templ_subst(st, cfg);
                 unref(st);
                 *(P+1) = value;
@@ -215,6 +207,7 @@ void * rule_args[] = {
 
 static void process_rule(ArgState *rule_state, str_t *args) {
     arg_reset_used(rule_state); 
+    memset(&s_rule_args,0,sizeof(s_rule_args));
     char *err = (char*)arg_process(rule_state,args-1);
     if (value_is_error(err)) {
         quit("R: %s",err);
@@ -516,7 +509,8 @@ int run_shmakefile(str_t specific_target) {
                 }
             }
             // reset the argument parser
-            arg_reset_used(state);            
+            arg_reset_used(state); 
+            memset(&s_args,0,sizeof(s_args));
             // that -1 is important.......
             char* err = (char*)arg_process(state,args-1);
             if (value_is_error(err)) {
