@@ -1,0 +1,10 @@
+#!/bin/sh
+. /tmp/shmake.sh
+
+# C -G objs *.c
+
+C -G o1 hello.c
+C -G o2 common.c
+
+C hello o1 o2
+
