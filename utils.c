@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <llib/file.h>
+#include <llib/template.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
