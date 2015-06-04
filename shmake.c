@@ -137,7 +137,7 @@ void need_update(str_t *need_list, str_t *cflags, str_t *lflags) {
 typedef struct Args_ {
     str_t include_dirs, defines, cflags, opt;
     str_t lib_dirs, libs, lflags;
-    bool debug, exports;
+    bool debug, exports,group;
     str_t exclude;
     str_t name;
     str_t needs;
@@ -184,6 +184,7 @@ void * compiler_args[] = {
     "string needs=''; // -n program needs",&s_args.needs,
     "bool debug; // -g debug build",&s_args.debug,
     "bool exports; // -e export symbols",&s_args.exports,
+    "bool group; // -G compile group",&s_args.group,
     "string opt='2'; // -O optimize level",&s_args.opt,
     "string exclude=''; // -x exclude files from list",&s_args.exclude,
     "string rule=''; // -R specify out extension for rule",&s_args.out_extension,
@@ -327,7 +328,7 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     return compile_step(compiler,files, s_args.cflags, includes_list, defines_list,odir);
 }
 
-Target *link_from_args(str_t compiler, str_t name, File **objs, int kind) {
+Target *link_from_args(str_t compiler, str_t name, str_t *objs, int kind) {
     if (s_def.lflags) {
         s_args.lflags = s_def.lflags;
     }
@@ -361,6 +362,10 @@ Target *link_from_args(str_t compiler, str_t name, File **objs, int kind) {
 }
 
 // Thunderbirds are Go!
+// This invokes the desired compiler, and links the resulting group of object files using the linker.
+// If's a _compile group_ then the group is created but not linked.
+// The input typically contains source files, but may just be named compiled groups.
+
 Target  *straight_build(str_t compiler, str_t name, str_t *files) {
     int kind = LINK_EXE;
     update_needs();
@@ -387,41 +392,65 @@ Target  *straight_build(str_t compiler, str_t name, str_t *files) {
     
     int nf  = array_len(files);
     // linking can give us executables, shared libraries or static libraries based on extension of name
-    str_t ext = file_extension(name);
-    if (str_eq(ext,".so")) {
-        cat(&s_args.lflags," -shared ");
-        if (! macosx) //* is there any harm in letting this through?
-            cat(&s_args.cflags," -fpic ");
-        kind = LINK_SO;
-    } else
-    if (str_eq(ext,".a")) {
-        kind = LINK_LIB;
-    } else
-    if (str_eq(ext,".c")) { // and so forth!!        
-        files = array_resize(files,nf+1);
-        files[nf] = name;
-        name = file_replace_extension(name,"");
+    str_t ext;
+    if (! s_args.group) {
+       ext = file_extension(name);
+       if (str_eq(ext,".so")) {
+           cat(&s_args.lflags," -shared ");
+           if (! macosx) //* is there any harm in letting this through?
+               cat(&s_args.cflags," -fpic ");
+           kind = LINK_SO;
+       } else
+       if (str_eq(ext,".a")) {
+           kind = LINK_LIB;
+       } else
+       if (str_eq(ext,".c")) { // and so forth!!        
+           files = array_resize(files,nf+1);
+           files[nf] = name;
+           name = file_replace_extension(name,"");
+       }
     }
     
-    // Now our 'files' may not all be source and can also be libraries.
+    // Now our 'files' may not all be source and can also be libraries or _groups_
     // Necessary to sift these out and pass any source files to the compile step
-    str_t **new_files = seq_new(str_t);
-    // these are going to be all the inputs to the linker; keep first entry empty for compile group!
+    // These are going to be all the inputs to the linker; keep first entry empty for compile group!
+    str_t **new_files = seq_new(str_t);    
     str_t **ins = seq_new(str_t);
     seq_add(ins,NULL);
     FOR(i,nf) {
         ext = file_extension(files[i]);
-        if (str_eq_any(ext,".a",".so")) {
+        if (str_eq_any(ext,".a",".so")) { // files we can safely feed to the linker
             seq_add(ins,files[i]);
-        } else {
+        } else
+        if (str_eq(ext,"")) { // has to be an _existing_ group!
+            if (group_by_name(files[i]) != NULL) {
+                seq_add(ins,files[i]);
+            }
+        } else { // must be a _source extension_
             seq_add(new_files,files[i]);
         }
     }
     str_t *inputs = seq_array_ref(ins); // will have at least length 1
     files = seq_array_ref(new_files);
-    Group *G = compile_from_args(compiler,files);
-    inputs[0] = (str_t)G;
-    return link_from_args(compiler,name,(File**)inputs,kind);
+    
+    Group *G = NULL;
+    if (array_len(files) > 0) { // there are files to be compiled
+       G  = compile_from_args(compiler,files);
+       inputs[0] = G->name; // and these are always the first input
+    }
+    
+    if (! s_args.group) { // we do want to link
+       return link_from_args(compiler,name,inputs,kind);
+    } else { // otherwise it's a named group of obj files
+       if (array_len(inputs) > 1) {
+          fprintf(stderr,"warning: compile group contains extra files\n");
+       }
+       if (! G) {
+           quit("no source files for group: %s",name);
+       }
+       G->name = name;
+       return NULL;
+    }
 }
 
 void setup_compiler(str_t name) {

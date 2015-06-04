@@ -107,6 +107,10 @@ void target_set_command(Target *t, str_t cmd) {
     t->data = cmd;
 }
 
+// Used to create a named target from a command, depending on the so-called
+// prerequisites. These are usually names of files or other targets, but may
+// already be File* or Target* objects.
+
 Target *target_new(str_t name, str_t *prereq, const void *data, ShmakeCallback callback) {    
     Target *T = obj_new(Target,Target_dispose);
     if (! s_target_type) {
@@ -202,6 +206,15 @@ Target *target(str_t name, str_t *prereq, str_t cmd) {
     return T;
 }
 
+// return all the files that our targets depends on (the 'prerequisites') as a space-separated
+// string.
+str_t target_depends_as_str(Target *T) {
+    return str_concat((char**)files_as_strings(T->prereq)," ");    
+}
+
+// Calling the Action of a target. Can be an actual function, but usually is a command
+// string. If such a target has its _message_ field set, then we printt that out rather
+// than the actual command (unless verbose)
 void target_fire(Target *T) {
     if (T->callback) {
         T->callback(T->data);
@@ -285,6 +298,7 @@ static void Group_dispose(Group *g) {
 }
 
 static Group*** s_groups;
+static int n_group;
 
 Group *group_new(str_t cmd, Target **targets) {
     Group *G = obj_new(Group,Group_dispose);
@@ -294,7 +308,7 @@ Group *group_new(str_t cmd, Target **targets) {
     }
     G->cmd = str_ref(cmd);
     G->targets = ref(targets);
-    G->name = NULL;
+    G->name = str_fmt("*G%03d",++n_group);
     seq_add(s_groups,G);
     return G;
 }
@@ -374,23 +388,26 @@ Group *compile_step (str_t compiler, str_t *files, str_t cflags, str_t *incdirs,
     return group_new(cmd, targets);    
 }
 
-Target *linker (str_t linker, str_t name, File **objs, str_t lflags, str_t *libdirs, str_t *libs, int kind) {
-    // build up list ogdbf prerequisites for our target.
+Target *linker (str_t linker, str_t name, str_t *objs, str_t lflags, str_t *libdirs, str_t *libs, int kind) {
+    // build up list of prerequisites for our target.
     // They may be GROUPS which are lists of targets
     // Typically the results are object files but could also be library files referenced directly.
     File ***deps = seq_new_ref(File*);
     FOR(i, array_len(objs)) {
-        File *obj = objs[i];
-        if (obj_type_index(obj) == s_group_type) {
-            seq_adda(deps, ((Group*)obj)->targets, -1);
+        str_t file = objs[i];
+        if (file==NULL) // may happen when linking straight from groups...
+           continue;
+        Group *G = group_by_name(file);
+        if (G) {
+            seq_adda(deps, G->targets, -1);
         } else {
-            seq_add(deps, obj);
+            seq_add(deps, (File*)file);
         }        
     }
     void **pr = seq_array_ref(deps);
     Target *T = target_new(name,(str_t*)pr,"",NULL);
-
-    str_t obj_files = str_concat((char**)files_as_strings(T->prereq)," ");    
+    str_t obj_files = target_depends_as_str(T);
+    
     str_t cmd;
     if (kind == LINK_LIB) {
         cmd = str_fmt("ar rcu %s %s; ranlib %s",name,obj_files,name);

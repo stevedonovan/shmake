@@ -64,6 +64,6 @@ str_t *group_expand_with_targets(str_t *prereq);
 enum {LINK_EXE, LINK_SO, LINK_LIB, LINK_STATIC};
 
 Group *compile_step (str_t compiler, str_t *files, str_t cflags, str_t *incdirs, str_t *defines, str_t odir);
-Target *linker (str_t linker, str_t name, File **objs, str_t lflags, str_t *libdirs, str_t *libs, int kind); 
+Target *linker (str_t linker, str_t name, str_t *objs, str_t lflags, str_t *libdirs, str_t *libs, int kind); 
 
 #endif
