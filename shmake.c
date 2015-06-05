@@ -52,6 +52,16 @@ typedef struct Need_ {
     str_t lflags;
 } Need;
 
+str_t lookup_and_subst(char **cfg, str_t key) {
+    char *res = str_lookup(cfg,key);
+    if (! res)
+        return NULL;
+    StrTempl *st = str_templ_new(res,"${}");
+    res = str_templ_subst(st, cfg);
+    unref(st);
+    return res;
+}
+
 // first, see if NEED.need exists in current dir or in ~/.shmake
 // If so, then it is a property-style file that needs at least one of
 // 'cflags' or 'libs' defined.
@@ -89,8 +99,6 @@ Need *need_from_name(str_t name) {
             char *value = *(P+1);
             if (str_findstr(value,"${") != -1) {
                 StrTempl *st = str_templ_new(value,"${}");
-                if (value_is_error(st))
-                    quit("expansion error %s",value_as_string(st));
                 value = str_templ_subst(st, cfg);
                 unref(st);
                 *(P+1) = value;
@@ -208,7 +216,6 @@ void * rule_args[] = {
 
 static void process_rule(ArgState *rule_state, str_t *args) {
     arg_reset_used(rule_state); 
-    memset(&s_rule_args,0,sizeof(s_rule_args));
     char *err = (char*)arg_process(rule_state,args-1);
     if (value_is_error(err)) {
         quit("R: %s",err);
@@ -522,6 +529,17 @@ int run_shmakefile(str_t specific_target) {
             args = (str_t*)str_split(p+1,":");
         }
         if (*cmd=='C') { // general compile target! 
+            // reset the argument parser
+            arg_reset_used(state);
+            // this should not be necessary!
+            memset(&s_args,0,sizeof(s_args));
+            
+            // that -1 is important.......
+            char* err = (char*)arg_process(state,args-1);
+            if (value_is_error(err)) {
+                quit("C: %s",err);
+            }
+            
             setup_compiler("c");
             str_t compiler = CC;
             ++cmd;
@@ -530,20 +548,12 @@ int run_shmakefile(str_t specific_target) {
                 cmd += 2;
                 compiler = CXX;
                 if (str_eq2(cmd,"11")) {
-                    cat (&s_def.cflags," -std=c++0x "); 
+                    cat (&s_args.cflags," -std=c++0x "); 
                 }
             } else {
                 if (str_eq2(cmd,"99")) {
-                    cat (&s_def.cflags," -std=c99 "); 
+                    cat (&s_args.cflags," -std=c99 "); 
                 }
-            }
-            // reset the argument parser
-            arg_reset_used(state); 
-            memset(&s_args,0,sizeof(s_args));
-            // that -1 is important.......
-            char* err = (char*)arg_process(state,args-1);
-            if (value_is_error(err)) {
-                quit("C: %s",err);
             }
             if (! s_args.debug) {
                 s_args.debug = debug;

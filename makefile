@@ -1,5 +1,5 @@
 CC=gcc
-OPT=-02
+OPT=-O2
 STRIP=-Wl,-s
 #OPT=-g
 CFLAGS=-std=c99 $(OPT) -Wall  -I.
