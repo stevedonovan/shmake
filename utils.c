@@ -33,10 +33,28 @@ str_t join(str_t odir, str_t tname) {
 // given an array ["A","B",...] and a prefix flag like -F,
 // return "-FA -FB ..."
  str_t flag_concat(str_t prefix, str_t* strings) {
+    char buffer[256];
     if (! strings) return str_new(""); 
     str_t* out = array_new_ref(str_t,array_len(strings));
     FOR(i,array_len(strings)) {
-        out[i] = str_fmt("%s%s",prefix,strings[i]);
+        str_t  s = strings[i];
+        // as a (possibly dubious) convenience, NAME=[STR] 
+        // expands into NAME="\"STR\"", which is an 
+        // awkward necessity for passing strings to C programs
+        str_t openb = strchr(s,'[');
+        str_t closeb = strrchr(s,']');
+        if (openb) {
+            char *P = buffer;
+            for(; s != openb; ++s) *P++ = *s;
+            ++s;
+            strcpy(P,"\"\\\"");
+            P+=3;
+            for(; s != closeb; ++s) *P++ = *s;
+            ++s;
+            strcpy(P,"\\\"\"");
+            s = buffer;
+        }
+        out[i] = str_fmt("%s%s",prefix,s);
     }
     str_t sl = str_concat((char**)out," ");    
     str_t res = str_fmt(" %s ",sl);
