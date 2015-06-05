@@ -153,6 +153,7 @@ static Args s_def;
 
 // globals. main_args specifies the command-line options for shmake.
 static str_t shmakefile;
+static str_t shmake_exp;
 static str_t *shmake_args;
 static str_t PLAT, CC, CXX;
 static str_t start_directory;
@@ -171,6 +172,7 @@ void * main_args[] = {
     "bool verbose[]; // -v verbose output",&verbose,
     "bool quiet; // -q no output unless error",&quiet,
     "string create=''; // -c create shmakefile from statement",&do_create,
+    "string expr=''; // -e simple throwaway shmake expression",&shmake_exp,
     "string #1[]; // target and VAR=VALUE assignments",&shmake_args,
     NULL
 };
@@ -505,7 +507,7 @@ int run_shmakefile(str_t specific_target) {
     ArgState *rule_state = arg_parse_spec(rule_args);
     str_t tmp_file = str_fmt("/tmp/shmake.%d",getpid());
     str_t *args = NULL;
-    int n = system(str_fmt("./%s %s",shmakefile,tmp_file));
+    int n = system(str_fmt("%s%s %s",(*shmakefile=='/' ? "" : "./"),shmakefile,tmp_file));
     if (n != 0) {
         if (errno != 0)
             perror("shmake");
@@ -631,15 +633,28 @@ int run_shmakefile(str_t specific_target) {
     return 0;
 }
 
+static void create_shmake(str_t name, str_t expr) {
+    file_write_fmt(name,"#!/bin/sh\n. /tmp/shmake.sh\n\n%s\n",expr);
+    exec(str_fmt("chmod +x %s",name));
+}
+
 int main(int argc, const char **argv)
 {
     int res = 0;
     arg_state = arg_command_line(main_args, argv);
-    if (*do_create) {
-        file_write_fmt("shmakefile","#!/bin/sh\n. /tmp/shmake.sh\n\n%s\n",do_create);
-        exec("chmod +x shmakefile");
-        printf("shmakefile created\n");
-        return 0;
+    if (*do_create || *shmake_exp) {
+        str_t expr = do_create, name = "shmakefile";
+        if (*shmake_exp) {
+            expr = shmake_exp;
+            name = str_fmt("/tmp/shmake-expr-%d",getpid());
+        }
+        create_shmake(name,expr);
+        if (*do_create) {
+            printf("shmakefile created\n");
+            return 0;
+        } else {
+            shmakefile = name;
+        }
     }
     if (*start_directory) {
         if (chdir(start_directory) != 0) {
