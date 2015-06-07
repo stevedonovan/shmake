@@ -52,6 +52,16 @@ typedef struct Need_ {
     str_t lflags;
 } Need;
 
+static bool need_check_builtin(Need *N) {
+    str_t name = N->name;
+    if (str_eq(name,"pthread")) {
+        N->cflags = "-pthread";
+        N->lflags = "-pthread";
+        return true;
+   }
+   return false;
+}
+
 str_t lookup_and_subst(char **cfg, str_t key) {
     char *res = str_lookup(cfg,key);
     if (! res)
@@ -69,6 +79,9 @@ str_t lookup_and_subst(char **cfg, str_t key) {
 Need *need_from_name(str_t name) {
     Need *N = obj_new(Need,NULL);
     N->name = str_ref(name);
+    if (need_check_builtin(N)) {
+        return N;
+    }
     str_t  nfile = str_fmt("%s.need",name);
     if (! file_exists(nfile,"r") && private_need_path) {
         nfile = str_fmt("%s/%s.need",private_need_path,name);
