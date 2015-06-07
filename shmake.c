@@ -162,6 +162,7 @@ static bool *verbose;
 static bool macosx;
 static bool debug;
 static bool quiet;
+static bool slack;
 
 void * main_args[] = {
     "// shmake: a simple shell-based make tool",
@@ -169,6 +170,7 @@ void * main_args[] = {
     "string directory=''; // -C directory to switch to first",&start_directory,
     "bool testing; // -t testing mode - show commands but don't execute them",&testing,
     "bool debug; // -g build debug binaries",&debug,
+    "bool slack; // -S disable strict warnings", &slack,
     "bool verbose[]; // -v verbose output",&verbose,
     "bool quiet; // -q no output unless error",&quiet,
     "string create=''; // -c create shmakefile from statement",&do_create,
@@ -301,6 +303,9 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     str_t *cflags = &s_args.cflags;
     if (s_def.cflags) {
         cat (cflags,s_def.cflags);
+    }
+    if (! slack) {
+        cat (cflags,"-Wall");
     }
     
     // strictly speaking, these are not mutually exclusive.

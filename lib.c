@@ -370,7 +370,7 @@ static str_t* prereq_from_dfile (str_t dfile) {
 Group *compile_step (str_t compiler, str_t *files, str_t cflags, str_t *incdirs, str_t *defines, str_t odir) {
     files = group_expand_with_targets(files);
     
-    str_t cmd = str_fmt("%s -c -Wall -MMD %s%s%s",
+    str_t cmd = str_fmt("%s -c -MMD %s%s%s",
         compiler,cflags,flag_concat("-D",defines),flag_concat("-I",incdirs));
     
     Target **targets = array_new_ref(Target*,array_len(files));
