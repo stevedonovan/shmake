@@ -5,6 +5,9 @@
 *
 * It is inspired by the Lake project, but really only aims for POSIX systems.
 *  'shmake -c "C hello hello.c" will create a new shmakefile for you for building a single C file.
+*
+* Copyright (c) 2015, Steve Donovan
+* BSD licence
 */
 #define _BSD_SOURCE
 #include <stdio.h>
@@ -294,6 +297,9 @@ void set_defaults(str_t name, str_t value) {
     } else
     if (str_eq(name,"quiet")) {
         quiet = str2bool(value);
+    } else
+    if (str_eq(name,"slack")) {
+        slack = str2bool(value);
     } else {
         quit("unknown default variable name %s",name);
     }
@@ -503,6 +509,12 @@ static str_t shmake_sh =
 "   done\n"
 "   echo $res >> $out\n"
 "}\n"
+"dir_exists() {\n"
+ "local name=$1;  shift 1\n"
+ "local res=$(ls $* 2> /dev/null);\n"
+ "if test -n \"$res\"; then  eval \"$name=$(dirname $res)\"; return 0\n"
+ "else return 1; fi\n"
+"}\n"
 "C() { pipe C \"$@\"; }\n"
 "C99() { pipe C99 \"$@\"; }\n"
 "Cpp() { pipe C++ \"$@\"; }\n"
@@ -518,9 +530,11 @@ int run_shmakefile(str_t specific_target) {
     if (! file_exists(shmakefile,"r")) {  // "x"!!!
         quit("'%s' does not exist",shmakefile);
     }
-    if (! file_exists("/tmp/shmake.sh","r")) {
+    // for now, ALWAYS overwrite shmake.sh. Makes upgrading
+    // easier, doubt if it's a performance problem!
+    //if (! file_exists("/tmp/shmake.sh","r")) {
         file_write_fmt("/tmp/shmake.sh",shmake_sh);
-    }
+    //}
     ArgState *state = arg_parse_spec(compiler_args);
     ArgState *rule_state = arg_parse_spec(rule_args);
     str_t tmp_file = str_fmt("/tmp/shmake.%d",getpid());

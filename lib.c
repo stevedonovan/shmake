@@ -1,3 +1,9 @@
+/* 
+* shmake - a shell-based build tool
+* Copyright (c) 2015, Steve Donovan
+* BSD licence
+*/
+
 #include <stdio.h>
 #include "shmake.h"
 #include <stdlib.h>
