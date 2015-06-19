@@ -96,7 +96,7 @@ Need *need_from_name(str_t name) {
         char **cfg = config_read(nfile);
         if (! cfg)
             return NULL;
-        
+
         // add special HERE variable (more verbose than this should be!)
         str_t here = file_dirname(nfile);
         char path[256];
@@ -109,7 +109,7 @@ Need *need_from_name(str_t name) {
         seq_add(ss,"HERE");
         seq_add(ss,here);
         cfg = seq_array_ref(ss);
-        
+
         // perform all needed ${} expansions
         for (char** P = cfg; *P; P+= 2) {
             char *value = *(P+1);
@@ -120,7 +120,7 @@ Need *need_from_name(str_t name) {
                 *(P+1) = value;
             }
         }
-        
+
         N->cflags = str_lookup(cfg,"cflags");
         N->lflags = str_lookup(cfg,"libs");
         return N;
@@ -134,7 +134,7 @@ Need *need_from_name(str_t name) {
 
 void need_update(str_t *need_list, str_t *cflags, str_t *lflags) {
     char **cs = strbuf_new();
-    char **ls = strbuf_new();        
+    char **ls = strbuf_new();
     strbuf_addsp(cs,*cflags);
     strbuf_addsp(ls,*lflags);
     FOR (i, array_len(need_list)) {
@@ -158,7 +158,7 @@ typedef struct Args_ {
     str_t name;
     str_t needs;
     str_t out_extension;
-    str_t output_directory;    
+    str_t output_directory;
     str_t* files;
 } Args;
 
@@ -229,17 +229,17 @@ void * rule_args[] = {
    "string output=''; // -d output directory",&s_rule_args.output_directory,
    "string #1; // name of rule",&s_rule_args.name,
    "string #2; // output extension",&s_rule_args.out_extension,
-   "string #3; // command",&s_rule_args.command, 
+   "string #3; // command",&s_rule_args.command,
    "string #4[]; // source files",&s_rule_args.files,
    NULL
 };
 
 static void process_rule(ArgState *rule_state, str_t *args) {
-    arg_reset_used(rule_state); 
+    arg_reset_used(rule_state);
     char *err = (char*)arg_process(rule_state,args-1);
     if (value_is_error(err)) {
         quit("R: %s",err);
-    }            
+    }
     str_t *files = s_rule_args.files;
     str_t odir = s_rule_args.output_directory;
     int n = array_len(files);
@@ -326,7 +326,7 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     if (! slack) {
         cat (cflags,"-Wall");
     }
-    
+
     // strictly speaking, these are not mutually exclusive.
     if (s_args.debug) {
         cat (cflags,"-g");
@@ -334,13 +334,13 @@ Group *compile_from_args(str_t compiler, str_t *files) {
     } else {
         cat (cflags,str_fmt("-O%s",s_args.opt));
     }
-    
+
     cat (&s_args.include_dirs,s_def.include_dirs);
     cat (&s_args.defines,s_def.defines);
-    
+
     str_t *includes_list = split(s_args.include_dirs);
     str_t *defines_list = split(s_args.defines);
-    
+
     // output directory for object and deps files
     str_t odir = s_args.output_directory;
     if (*odir == 0) {
@@ -364,22 +364,22 @@ Target *link_from_args(str_t compiler, str_t name, str_t *objs, int kind) {
     if (s_def.libs) {
         cat (&s_args.libs, s_def.libs);
     }
-    
+
     // try to strip executables unless they have debug or needed symbol information.
-    if (kind == LINK_EXE) {
+    // (both of these options are not used on OS X)
+    if (kind == LINK_EXE && ! macosx) {
         if (s_args.exports || s_def.exports) { // executable exports symbols
-            if (! macosx) // Not needed on OS X
-                cat (&s_args.lflags,"-Wl,-E"); 
-        } else 
+            cat (&s_args.lflags,"-Wl,-E");
+        } else
         if (! s_args.debug)  { // otherwise strip as much as possible
             cat(&s_args.lflags,"-Wl,-s");
         }
     }
-    
+
     if (! s_args.lflags) {
         s_args.lflags = "";
     }
-    
+
     Target *res = linker(compiler,name,objs,s_args.lflags,split(s_args.lib_dirs),split(s_args.libs),kind);
     // program/lib targets push themselves to the front. Like make, shmake looks for
     // first target as the default.
@@ -395,15 +395,15 @@ Target *link_from_args(str_t compiler, str_t name, str_t *objs, int kind) {
 Target  *straight_build(str_t compiler, str_t name, str_t *files) {
     int kind = LINK_EXE;
     update_needs();
-    
+
     // shortcut - if there aren't any names, compile a single file
     // i.e. 'C foo.c' is equivalent to 'C foo foo.c'
     if (array_len(files)==0) {
         files = array_new(str_t,1);
-        files[0]  =  name; 
+        files[0]  =  name;
         name = file_replace_extension(name,"");
     }
-    
+
     // often easier to specify files by excluding some from a wildcard list
     if (*s_args.exclude) {
         str_t *excludes = split(s_args.exclude);
@@ -415,7 +415,7 @@ Target  *straight_build(str_t compiler, str_t name, str_t *files) {
         }
         files = seq_array_ref(ss);
     }
-    
+
     int nf  = array_len(files);
     // linking can give us executables, shared libraries or static libraries based on extension of name
     str_t ext;
@@ -430,17 +430,17 @@ Target  *straight_build(str_t compiler, str_t name, str_t *files) {
        if (str_eq(ext,".a")) {
            kind = LINK_LIB;
        } else
-       if (str_eq(ext,".c")) { // and so forth!!        
+       if (str_eq(ext,".c")) { // and so forth!!
            files = array_resize(files,nf+1);
            files[nf] = name;
            name = file_replace_extension(name,"");
        }
     }
-    
+
     // Now our 'files' may not all be source and can also be libraries or _groups_
     // Necessary to sift these out and pass any source files to the compile step
     // These are going to be all the inputs to the linker; keep first entry empty for compile group!
-    str_t **new_files = seq_new(str_t);    
+    str_t **new_files = seq_new(str_t);
     str_t **ins = seq_new(str_t);
     seq_add(ins,NULL);
     FOR(i,nf) {
@@ -458,13 +458,13 @@ Target  *straight_build(str_t compiler, str_t name, str_t *files) {
     }
     str_t *inputs = seq_array_ref(ins); // will have at least length 1
     files = seq_array_ref(new_files);
-    
+
     Group *G = NULL;
     if (array_len(files) > 0) { // there are files to be compiled
        G  = compile_from_args(compiler,files);
        inputs[0] = G->name; // and these are always the first input
     }
-    
+
     if (! s_args.group) { // we do want to link
        return link_from_args(compiler,name,inputs,kind);
     } else { // otherwise it's a named group of obj files
@@ -484,13 +484,13 @@ void setup_compiler(str_t name) {
         if (CC) return;
         CC = getenv("CC");
         if (! CC)
-            CC = file_command("basename $(which gcc || which cc)");    
+            CC = file_command("basename $(which gcc || which cc)");
     } else
     if (str_eq(name,"c++")) {
         if (CXX) return;
         CXX = getenv("CXX");
         if  (! CXX)
-            CXX = file_command("basename $(which g++ || which c++)");    
+            CXX = file_command("basename $(which g++ || which c++)");
     }
 }
 
@@ -503,8 +503,8 @@ static str_t shmake_sh =
 "out=$1\n"
 "pipe() {\n"
 "   res=''\n"
-"   for f in \"$@\"; do\n" 
-"       f=$(echo -n \"$f\" | tr '\\n' '\\001')\n"
+"   for f in \"$@\"; do\n"
+"       f=$(printf '%%s' \"$f\" | tr '\\n' '\\001')\n"
 "       res=\"$res:$f\"\n"
 "   done\n"
 "   echo $res >> $out\n"
@@ -562,18 +562,18 @@ int run_shmakefile(str_t specific_target) {
             *p = '\0';
             args = (str_t*)str_split(p+1,":");
         }
-        if (*cmd=='C') { // general compile target! 
+        if (*cmd=='C') { // general compile target!
             // reset the argument parser
             arg_reset_used(state);
             // this should not be necessary!
             memset(&s_args,0,sizeof(s_args));
-            
+
             // that -1 is important.......
             char* err = (char*)arg_process(state,args-1);
             if (value_is_error(err)) {
                 quit("C: %s",err);
             }
-            
+
             setup_compiler("c");
             str_t compiler = CC;
             ++cmd;
@@ -582,11 +582,11 @@ int run_shmakefile(str_t specific_target) {
                 cmd += 2;
                 compiler = CXX;
                 if (str_eq2(cmd,"11")) {
-                    cat (&s_args.cflags," -std=c++0x "); 
+                    cat (&s_args.cflags," -std=c++0x ");
                 }
             } else {
                 if (str_eq2(cmd,"99")) {
-                    cat (&s_args.cflags," -std=c99 "); 
+                    cat (&s_args.cflags," -std=c99 ");
                 }
             }
             if (! s_args.debug) {
@@ -610,7 +610,7 @@ int run_shmakefile(str_t specific_target) {
                 Group *G = group_new("cmd",targets);
                 G->name = s_args.name;
             }
-        } else 
+        } else
         if (str_eq(cmd,"target")){
             str_t command = array_pop(args);
             if (str_eq(command,"none")) {
@@ -620,7 +620,7 @@ int run_shmakefile(str_t specific_target) {
             str_t *prereq = array_copy(args,1,-1);
             target(name,group_expand_with_targets(prereq),command);
         } else
-        if (str_eq(cmd,"all")) {            
+        if (str_eq(cmd,"all")) {
             target("all",group_expand_with_targets(args),NULL);
         } else
         if (str_eq(cmd,"set")) {
@@ -628,14 +628,14 @@ int run_shmakefile(str_t specific_target) {
         } else
         if (str_eq(cmd,"rule")) {
             process_rule(rule_state, args);
-        } else 
+        } else
         if (str_eq(cmd,"quit")) {
             str_t msg = args[0];
             if (str_eq(msg,"exists")) {
                 if (! getenv(args[1]))
                     quit("quit '%s' does not exit",args[1]);
             } else
-            if (args[1] == NULL) 
+            if (args[1] == NULL)
                 quit("quit %s",msg);
         }
         unref(args);
@@ -644,7 +644,7 @@ int run_shmakefile(str_t specific_target) {
     if (array_len(targets()) == 0) {
         quit("no targets defined","");
     }
-    shmake_flags(verbose_level,testing,quiet);    
+    shmake_flags(verbose_level,testing,quiet);
     // notice the special case; 'all' matches the first target, if not explicitly
     // present.   target_push_to_front() ensures that program/lib targets end here.
     str_t target_name = specific_target ? specific_target : "all";
@@ -694,11 +694,11 @@ int main(int argc, const char **argv)
             return 1;
         }
     }
-    
+
     PLAT=file_command("uname");
     macosx = str_eq(PLAT,"Darwin");
     setenv("PLAT",PLAT,true);
-    
+
     // verbose is an array of bools.
     // can say -v for level 1 and -vv for level 2
     verbose_level = 0;
