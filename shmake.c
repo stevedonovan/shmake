@@ -547,6 +547,7 @@ int run_shmakefile(str_t specific_target) {
     }
     FILE *in = fopen(tmp_file,"r");
     if (! in) {
+        fprintf(stderr,"shmake: no targets defined?\n");
         quit("cannot open %s",tmp_file);
     }
     while (file_gets(in,buff,sizeof(buff))) {
@@ -693,6 +694,7 @@ int main(int argc, const char **argv)
             fprintf(stderr,"unable to change directory to '%s'\n",start_directory);
             return 1;
         }
+        printf("shmake: now in %s\n",start_directory);
     }
 
     PLAT=file_command("uname");

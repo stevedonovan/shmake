@@ -97,6 +97,8 @@ static int s_target_type;
 static Target *** s_targets;
 
 Target ** targets() {
+    if (! s_targets)
+        return NULL;
     return *s_targets;
 }
 
