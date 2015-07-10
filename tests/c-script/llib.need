@@ -1,3 +1,4 @@
+#!/bin/sh
 prefix=../..
-cflags=-I${prefix}
-libs=-L${prefix}/llib -lllib
+echo cflags -I$prefix
+echo libs -L$prefix/llib -lllib

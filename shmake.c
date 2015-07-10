@@ -19,7 +19,6 @@
 #include <llib/str.h>
 #include <llib/array.h>
 #include <llib/file.h>
-#include <llib/config.h>
 #include <llib/arg.h>
 #include <llib/template.h>
 #include <llib/json.h>
@@ -85,7 +84,7 @@ Need *need_from_name(str_t name) {
     if (need_check_builtin(N)) {
         return N;
     }
-    str_t  nfile = str_fmt("%s.need",name);
+    str_t  nfile = str_fmt("./%s.need",name);
     if (! file_exists(nfile,"r") && private_need_path) {
         nfile = str_fmt("%s/%s.need",private_need_path,name);
     }
@@ -93,36 +92,30 @@ Need *need_from_name(str_t name) {
         nfile = str_fmt("%s/.shmake/%s.need",getenv("HOME"),name);
     }
     if (file_exists(nfile,"r")) {
-        char **cfg = config_read(nfile);
-        if (! cfg)
+        if (! file_exists(nfile,"rx")) {
+            fprintf(stderr,"'%s': not executable\n",nfile);
             return NULL;
-
-        // add special HERE variable (more verbose than this should be!)
-        str_t here = file_dirname(nfile);
-        char path[256];
-        if (getcwd(path,sizeof(path)) == NULL) {
-            quit("can't get current directory; %s",strerror(errno));
         }
-        here = str_fmt("%s/%s",path,here);
-        str_t** ss = seq_new(str_t);
-        seq_adda(ss,cfg,-1);
-        seq_add(ss,"HERE");
-        seq_add(ss,here);
-        cfg = seq_array_ref(ss);
-
-        // perform all needed ${} expansions
-        for (char** P = cfg; *P; P+= 2) {
-            char *value = *(P+1);
-            if (str_findstr(value,"${") != -1) {
-                StrTempl *st = str_templ_new(value,"${}");
-                value = str_templ_subst(st, cfg);
-                unref(st);
-                *(P+1) = value;
+        N->cflags = NULL;
+        N->lflags = NULL;
+        // The need script is passed its dirname
+        str_t here = file_dirname(nfile);
+        str_t cmd = str_fmt("%s '%s'",nfile,here);
+        char **lines = file_command_lines(cmd);
+        FOR(i,array_len(lines)) {
+            char **parts = str_split_n(lines[i]," ",1);
+            if (str_eq(parts[0],"cflags")) {
+                N->cflags = parts[1];
+            } else
+            if (str_eq(parts[0],"libs")) {
+                N->lflags = parts[1];
             }
         }
+        if (! N->cflags && ! N->lflags) {
+            fprintf(stderr,"'%s': at least one of cflags and libs must be echoed out\n",nfile);
+            return NULL;
+        }
 
-        N->cflags = str_lookup(cfg,"cflags");
-        N->lflags = str_lookup(cfg,"libs");
         return N;
     }
     N->cflags = file_command_fmt("pkg-config --cflags %s",name);
