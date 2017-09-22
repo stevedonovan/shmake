@@ -19,7 +19,7 @@ typedef int (*ShmakeCallback)(const void *);
 enum TargetType {TARGET_PHONY, TARGET_FILE, TARGET_OBJ, TARGET_PROG};
 
 typedef struct Target_ {
-    // File-like part
+    // File-like part - safe to cast Target* to File*
     str_t name;
     // we have _prerequistes_. If they change, we must update this target
     File **prereq;

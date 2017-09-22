@@ -121,6 +121,10 @@ void target_set_command(Target *t, str_t cmd) {
 
 Target *target_new(str_t name, str_t *prereq, const void *data, ShmakeCallback callback) {    
     Target *T = obj_new(Target,Target_dispose);
+    // this is llib hackery. Our pointers have associated types,
+    // so remember what the allocated type was for Target.
+    // Later we will do the horrible thing and distinguish between files and targets
+    // using this index
     if (! s_target_type) {
         s_target_type = obj_type_index(T);
         s_targets = seq_new_ref(Target*);
@@ -134,6 +138,7 @@ Target *target_new(str_t name, str_t *prereq, const void *data, ShmakeCallback c
     FOR(i,array_len(prereq)) {
         char *name = (char*)prereq[i];
         File *f = NULL;
+        // Dodgy dynamic typing, a la llib
         // prereq may contain strings (the default).
         if (obj_refcount(name) == -1 || value_is_string(name)) {
             // but we do check to see if the name refers to an existing target
@@ -222,7 +227,7 @@ str_t target_depends_as_str(Target *T) {
 }
 
 // Calling the Action of a target. Can be an actual function, but usually is a command
-// string. If such a target has its _message_ field set, then we printt that out rather
+// string. If such a target has its _message_ field set, then we print that out rather
 // than the actual command (unless verbose)
 void target_fire(Target *T) {
     if (T->callback) {

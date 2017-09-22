@@ -557,6 +557,7 @@ int run_shmakefile(str_t specific_target) {
             args = (str_t*)str_split(p+1,":");
         }
         if (*cmd=='C') { // general compile target!
+            // currently can be C, C++, C99, C++11
             // reset the argument parser
             arg_reset_used(state);
             // this should not be necessary!
@@ -605,7 +606,7 @@ int run_shmakefile(str_t specific_target) {
                 G->name = s_args.name;
             }
         } else
-        if (str_eq(cmd,"target")){
+        if (str_eq(cmd,"target")){ // T name (prereq..) [command]
             str_t command = array_pop(args);
             if (str_eq(command,"none")) {
                 command = NULL;
@@ -614,7 +615,7 @@ int run_shmakefile(str_t specific_target) {
             str_t *prereq = array_copy(args,1,-1);
             target(name,group_expand_with_targets(prereq),command);
         } else
-        if (str_eq(cmd,"all")) {
+        if (str_eq(cmd,"all")) { // short for T all ...
             target("all",group_expand_with_targets(args),NULL);
         } else
         if (str_eq(cmd,"set")) {
@@ -629,8 +630,9 @@ int run_shmakefile(str_t specific_target) {
                 if (! getenv(args[1]))
                     quit("quit '%s' does not exit",args[1]);
             } else
-            if (args[1] == NULL)
+            if (args[1] == NULL) {
                 quit("quit %s",msg);
+            }
         }
         unref(args);
     }
