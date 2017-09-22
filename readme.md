@@ -6,7 +6,7 @@ build tool like [lake](https://github.com/stevedonovan/Lake), but aims to make t
 and the complicated stuff easier.
 
 For instance, say we have a little project with two source files, 'hello.c' and 'common.c',
-with 'hello.c' including 'common.c'.   This would be the _shmakefile_.
+with 'hello.c' including 'common.h'.   This would be the _shmakefile_.
 
 ```Shell
 #!/bin/sh
@@ -26,15 +26,17 @@ compiling common.o
 compiling hello.o
 linking hello
 simple$ shmake
+simple$ # nothing happened (shmake is quiet)
 simple$ touch common.c
 simple$ shmake
 compiling common.o
 linking hello
+# rebuild after change to common.c
 simple$ touch common.h
 simple$ shmake
 compiling hello.o
 linking hello
-
+# rebuild hello.c after change to included common.h
 ```
 
 So the single  'C hello *.c' gives us a build which already tracks all the dependencies.
@@ -58,11 +60,16 @@ gcc common.o hello.o -Wl,-s -o hello
 
 ```
 
-Just to make things a little easier, to create a shmakefile initially, use the '-c' option
+Just to make things a little easier; to create an initial shmakefile, use the '-c' option
 
 ```Shell
 simple$ shmake -c 'C hello *.c'
 shmakefile created
+simple$ cat shmakefile
+#!/bin/sh
+. /tmp/shmake.sh
+
+C hello *.c
 ```
 
 ## Full Control
@@ -85,7 +92,7 @@ want '-std=std99'.  This is pretty much how we would write a build as a shell sc
 takes care of the dependency tracking.
 
 This is entirely equivalent, except using the S ('set') command for specifying _default flags_.
-It's clearer for more complicated projects, pdlus it applies to _any_ program target unless they
+It's clearer for more complicated projects, plus it applies to _any_ program target unless they
 explicitly override the defaults.
 
 ```Shell
@@ -156,9 +163,9 @@ If there's no such file, we ask `pkg-config`.
 The `-n/---needs` flag generally takes a space-separated list of needs - it cannot be used multiply like '-I'.
 
 (Note: in the initial release of shmake, the format of .need files resembled .pc files as understood by 'pkg-config`.
-However, it was _different_ from .pc file format, and did not allow the flexibility of 'shell everywhere'. Defining need
-files as scripts allows for checking for the existence and location of packages; they may also be written in
-Python or any other language if you feel frustrated.)
+However, it was _different_ from the actual .pc file format, and did not allow the flexibility of 'shell everywhere'.
+Defining need files as scripts allows for checking for the existence and location of packages; 
+they may also be written in Python or any other language if you feel frustrated.)
 
 ## A Step Back: Targets
 
@@ -183,11 +190,15 @@ all hello
 
 The T ('target') command is of the form 'T target (prequisites) shell-command'. 'Prerequisites'
 is the make term for 'inputs that our target depends on'.
-So 'hello.o' depends on hello.o _and_ on common.h.  (This is a clunky word so I will just call them 'inputs'.)  The shell-command can contain @() expansions of the three variables TARGET (first name) INPUT (first input) and DEPS (all inputs). The targets are hello.o, common.o and hello itself.  We need the 'dummy' target 'all'  ('all a b c' is short for 'T all a b c none') so that shmake knows what default target to build.  Otherwise, just as in make, it would just compile hello.c and stop.
+So 'hello.o' depends on hello.o _and_ on common.h.  (This is a clunky word so I will just call them 'inputs'.)
+The shell-command can contain @() expansions of the three variables TARGET (first name) INPUT (first input)
+and DEPS (all inputs). The targets are hello.o, common.o and hello itself.
+We need the 'dummy' target 'all'  ('all a b c' is short for 'T all a b c none') so that shmake knows what
+default target to build.  Otherwise, just as in make, it would just compile hello.c and stop.
 
 This style is tedious for actually building projects because you must manually track all the inputs
 your targets depend on. For gcc and compatible compilers, the marvelous
--MMD flag - create .d dependency file - helps tremendously and that's the big convenience of the
+-MMD flag (create .d dependency file) helps tremendously and that's the big convenience of the
 C compile command.  But it does mean you can use shmake with any set of commands,
 using all the power of shell scripting.
 
@@ -197,14 +208,14 @@ For instance, in tests/self/shmakefile, there is:
 ```Shell
 SRC='../..'
 R copy-files -d $PWD ditto 'cp @(INPUT) @(TARGET)' $SRC/*.c $SRC/*.h
-
 ```
+
 A rule takes the following arguments:
   - it has a _name_
   - an _output extension_. 'ditto' means that the out extension is the in extension.
   - a _command_, just as with a target
   - a set of input files
-  -  can use -d to set the output directory, which you _must_ do with 'ditto'!
+  - can use -d to set the output directory, which you _must_ do with 'ditto'!
 
 The name is not a target, although it can be used in the same contexts; it is a _group_
 of related targets, generated by the rule.  Rules can be seen as target factories.
