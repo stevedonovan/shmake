@@ -1,3 +1,4 @@
-prefix=${HERE}
-cflags=-I${prefix}
-libs=-L${prefix} -lfoo
+#!/bin/sh
+here=$1
+echo cflags -I$here
+echo libs -L$here -lfoo
