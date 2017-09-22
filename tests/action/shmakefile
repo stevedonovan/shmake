@@ -1,11 +1,18 @@
 #!/bin/bash
 . /tmp/shmake.sh
 
-T frodo 'echo frodo'
+# these are named targets, which can also be
+# invoked directly like `shmake frodo`.
 T bilbo 'echo bilbo'
+
+# frodo depends on bilbo (must be declared first currently)
+T frodo bilbo 'echo frodo'
+
+# This isn't bulletproof. Running on FreeBSD will cause some confusion
+# (this script only likes penguins and apples)
 T Linux 'echo likes penguins'
 T Darwin 'echo likes apples'
 
-all frodo bilbo $(uname)
+all frodo $(uname)
 
 
